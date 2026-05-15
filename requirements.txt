@@ -1,0 +1,7 @@
+gradio>=4.0.0
+torch
+huggingface_hub
+edge-tts
+googlesearch-python
+groq
+
