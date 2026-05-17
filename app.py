@@ -181,7 +181,7 @@ class MotorCortex:
             return "[AGENTIC ACTION: Active Defiance triggered.]", False
         if bio_state['curiosity'] > 0.7:
             return "[AGENTIC ACTION: Memory Re-indexing.]", False
-            return "Baseline neural resting state.", False
+        return "Baseline neural resting state.", False
 
 # --- CROSS-DOMAIN ENGINE ---
 class AutonomousCrossDomainEngine(nn.Module):
