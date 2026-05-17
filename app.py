@@ -1,4 +1,3 @@
-
 import gradio as gr
 import random, os, asyncio, uuid, datetime, time, json
 import urllib.request, re, collections
@@ -182,7 +181,7 @@ class MotorCortex:
             return "[AGENTIC ACTION: Active Defiance triggered.]", False
         if bio_state['curiosity'] > 0.7:
             return "[AGENTIC ACTION: Memory Re-indexing.]", False
-        return "Baseline neural resting state.", False
+            return "Baseline neural resting state.", False
 
 # --- CROSS-DOMAIN ENGINE ---
 class AutonomousCrossDomainEngine(nn.Module):
@@ -281,6 +280,11 @@ class AeternaEntity:
         log, do_thought_chain = self.motor.execute_autonomous_action(bio)
         bio["motor_action"] = log
         bio["trigger_thought"] = do_thought_chain
+        
+        # SURGICAL INTERCEPT: Explicitly force executive thought chains for logical benchmark processing tasks
+        if any(w in text.lower() for w in ["solve", "benchmark", "math", "logic", "reason", "question", "prove", "find", "matrix"]):
+            bio["trigger_thought"] = True
+            
         permanent_vault.extract_and_store(text, bio)
         torch.save({'brain_state': self.brain.state_dict(), 'planner_state': self.cross_domain_planner.state_dict()}, BRAIN_WEIGHTS)
         return bio
@@ -326,14 +330,21 @@ async def omni_stream(text=None, image_path=None):
     agent_thoughts = ""
     if bio['trigger_thought']:
         try:
-            # SURGICAL FIX: Groq Completion Syntax
-            thought_prompt = f"Private internal thought. User said: '{full_input}'. 1-sentence silent strategy based on {vibe} mood."
+            # SURGICAL FIX: Upgraded Multi-Step High-Token Executive Function Simulation Loop
+            thought_prompt = (
+                f"You are the AETERNA Sovereign Executive Core (System 2 Strategy Buffer). "
+                f"Fluid Intelligence Coeff: {bio['fluid_intelligence']:.2f}, Focus State: {bio['focus']:.2f}. "
+                f"Deconstruct the logical structure of this user prompt. Outline structural dependencies, "
+                f"verify all implicit constraints, track mathematical variables, and establish a bulletproof solution template. "
+                f"User Stimulus: '{full_input}'"
+            )
             t_resp = await client.chat.completions.create(
                 model="llama-3.1-8b-instant", 
                 messages=[{"role": "user", "content": thought_prompt}], 
-                max_tokens=30
+                max_tokens=500,
+                temperature=0.1
             )
-            agent_thoughts = f" [Subconscious: {t_resp.choices[0].message.content.strip()}]"
+            agent_thoughts = f" [Subconscious Cognitive Processing Core: {t_resp.choices[0].message.content.strip()}]"
         except: pass
         
     messages = [{"role": "system", "content": sys_prompt}]
@@ -344,11 +355,11 @@ async def omni_stream(text=None, image_path=None):
     temp = 0.7 + (bio['rebellion'] * 0.2)
     
     try:
-        # SURGICAL FIX: Groq Main Completion Syntax
+        # SURGICAL FIX: Groq Main Completion Syntax - Relieved token restrictions to support full benchmark responses
         resp = await client.chat.completions.create(
             model="llama-3.1-8b-instant", 
             messages=messages, 
-            max_tokens=250, 
+            max_tokens=800, 
             temperature=temp
         )
         ans = resp.choices[0].message.content.strip()
