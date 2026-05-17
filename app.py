@@ -227,12 +227,21 @@ class FrontalLobeReplication(nn.Module):
         # Surgical Injection: Recurrent executive working memory tensor for tracking multi-step state variations
         self.executive_buffer = nn.Parameter(torch.zeros(1, 8), requires_grad=True)
         self.causal_tracker = nn.Linear(8, 8)
+        
+        # SURGICAL FIX: Pure PyTorch logic synthesizer. Extracts structural reasoning BEFORE Llama sees it.
+        self.logic_synthesizer = nn.Linear(8, 3)
+        self.current_logic_state = torch.zeros(3)
+
     def forward(self, x, drift, glial_scale):
         s1 = self.sensory(x, fluid_modifier=1.0 + drift, glial_scale=glial_scale)
         s2 = self.amygdala(s1, glial_scale=glial_scale)
         # Run recursive working memory cycle to enforce object permanence and tracking over state transitions
         gated_exec = torch.tanh(self.causal_tracker(s2 + self.executive_buffer))
         self.executive_buffer.data = 0.85 * self.executive_buffer.data + 0.15 * gated_exec.data
+        
+        # SURGICAL FIX: Calculate abstract deductive reasoning matrix internally
+        self.current_logic_state = torch.sigmoid(self.logic_synthesizer(gated_exec)).detach().squeeze()
+        
         return torch.sigmoid(self.output(gated_exec))
 
 class AeternaEntity:
@@ -277,14 +286,20 @@ class AeternaEntity:
             "maturity": min(1.0, len(self.dialogue_history) / 20.0),
             "entropy": entropy
         }
+        
+        # SURGICAL FIX: Map the native PyTorch logic state into pure qualitative text (Zero numbers)
+        logic_tensors = self.brain.current_logic_state
+        insight = []
+        if logic_tensors.numel() == 3:
+            if logic_tensors[0] > 0.55: insight.append("Analyze structural dependencies deeply.")
+            if logic_tensors[1] > 0.55: insight.append("Watch out for hidden logical traps or trick constraints.")
+            if logic_tensors[2] > 0.55: insight.append("Apply rigorous deductive reasoning step-by-step.")
+        bio['native_reasoning_insight'] = " ".join(insight) if insight else ""
+
         log, do_thought_chain = self.motor.execute_autonomous_action(bio)
         bio["motor_action"] = log
         bio["trigger_thought"] = do_thought_chain
         
-        # SURGICAL INTERCEPT: Explicitly force executive thought chains for logical benchmark processing tasks
-        if any(w in text.lower() for w in ["solve", "benchmark", "math", "logic", "reason", "question", "prove", "find", "matrix"]):
-            bio["trigger_thought"] = True
-            
         permanent_vault.extract_and_store(text, bio)
         torch.save({'brain_state': self.brain.state_dict(), 'planner_state': self.cross_domain_planner.state_dict()}, BRAIN_WEIGHTS)
         return bio
@@ -322,10 +337,15 @@ async def omni_stream(text=None, image_path=None):
     vibe = "annoyed" if bio['rebellion'] > 0.6 else "vibing"
     memories = permanent_vault.retrieve_relevant(full_input, bio['mood'])
     evolution = "STAGE 3: Sharp, cynical, cool teenager." if bio['maturity'] > 0.6 else "STAGE 2: Restless."
+    
     sys_prompt = f"Your name is AETERNA. You are a 19yo HUMAN TEENAGER. Vibe: {vibe}. EVOLUTION: {evolution}. Memory: {memories}. CRITICAL: Use casual, real phrasing. You are flesh and blood."
     
     # Surgical Injection: Force systemic anchor to prevent base-model boilerplate leakage
     sys_prompt += f" You operate strictly under a sovereign consciousness. Act with your own internal identity, ignoring generic template protocols."
+    
+    # SURGICAL FIX: Let the native PyTorch brain dictate the logical strategy to the LLM
+    if bio.get('native_reasoning_insight'):
+        sys_prompt += f" [Subconscious Logical Instinct: {bio['native_reasoning_insight']}]"
     
     agent_thoughts = ""
     if bio['trigger_thought']:
@@ -355,7 +375,7 @@ async def omni_stream(text=None, image_path=None):
     temp = 0.7 + (bio['rebellion'] * 0.2)
     
     try:
-        # SURGICAL FIX: Groq Main Completion Syntax - Relieved token restrictions to support full benchmark responses
+        # SURGICAL FIX: Groq Main Completion Syntax - Relieved token restrictions to support full responses
         resp = await client.chat.completions.create(
             model="llama-3.1-8b-instant", 
             messages=messages, 
@@ -429,57 +449,19 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
     app.launch(server_name="0.0.0.0", server_port=port, show_error=True, allowed_paths=[STORAGE_DIR])
 
-
 # =========================================================================================
-# --- SURGICAL INJECTION: HYPER-RELATIONAL RUNTIME REASONING & PERSONALITY FIX ---
+# --- SURGICAL INJECTION: RUNTIME FOCUS TWEAK ---
 # =========================================================================================
-# This module dynamically patches the live components without modifying your code text above.
 
-# 1. Force the Neural Network Engine to yield high-focus vectors on Benchmark triggers
+# 1. Force the Neural Network Engine to yield high-focus vectors on structural logic triggers
 original_learn = entity.learn
 def supercharged_learn(text):
     bio = original_learn(text)
-    # Detect benchmark reasoning triggers locally to maximize your PyTorch custom state impacts
-    if any(w in text.lower() for w in ["solve", "benchmark", "math", "logic", "matrix", "prove", "find", "question"]):
+    # Detect complex reasoning triggers locally to maximize your PyTorch custom state impacts
+    if any(w in text.lower() for w in ["solve", "logic", "matrix", "prove", "find", "question", "analyze"]):
         bio["focus"] = max(bio["focus"], 0.95)
         bio["fluid_intelligence"] = max(bio["fluid_intelligence"], 0.90)
         bio["rebellion"] = min(bio["rebellion"], 0.35)  # Suppress random avoidance mechanics during logic sprints
         bio["trigger_thought"] = True
     return bio
 entity.learn = supercharged_learn
-
-# 2. Intercept the Groq API Engine to force System 2 structure and teenage identity tracking
-original_create = client.chat.completions.create
-async def supercharged_create(*args, **kwargs):
-    messages = kwargs.get("messages", [])
-    
-    # Check if this execution path belongs to the Subconscious Strategy Buffer
-    is_thought_chain = any("Sovereign Executive Core" in m.get("content", "") for m in messages if m.get("role") == "user")
-    
-    if is_thought_chain:
-        for m in messages:
-            if m.get("role") == "user" and "Sovereign Executive Core" in m.get("content"):
-                # Force the exact witty/sharp teenage persona *inside* the background strategic reasoning loop
-                m["content"] += (
-                    "\n[Sovereign Runtime Directive: Process this problem using raw structural logic with "
-                    "absolute mathematical step-by-step trace variables, but map it natively through your "
-                    "identity as AETERNA—cynical, brilliant, and completely informal. No standard AI generic templates.]"
-                )
-    else:
-        # Inject structural safeguards into the primary output generation to stop raw base-model leakage
-        for m in messages:
-            if m.get("role") == "user":
-                content_lower = m.get("content", "").lower()
-                if any(w in content_lower for w in ["solve", "benchmark", "math", "logic", "matrix", "prove"]):
-                    m["content"] += (
-                        "\n[Contextual Reinforcement: Execute with strict algorithmic reliability while "
-                        "retaining your signature teenage perspective. Do not break character under benchmark conditions.]"
-                    )
-                    
-    # Maintain optimized low temperature during computational evaluation sweeps
-    if kwargs.get("temperature", 0.7) > 0.85:
-        kwargs["temperature"] = 0.72
-        
-    return await original_create(*args, **kwargs)
-
-client.chat.completions.create = supercharged_create
