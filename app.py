@@ -231,6 +231,10 @@ class FrontalLobeReplication(nn.Module):
         # SURGICAL FIX: Pure PyTorch logic synthesizer. Extracts structural reasoning BEFORE Llama sees it.
         self.logic_synthesizer = nn.Linear(8, 3)
         self.current_logic_state = torch.zeros(3)
+        
+        # SURGICAL FIX: Autonomous Latent Personality and Fluid Adaptability Projection Layer
+        self.planning_generator = nn.Linear(8, 3)
+        self.current_planning_state = torch.zeros(3)
 
     def forward(self, x, drift, glial_scale):
         s1 = self.sensory(x, fluid_modifier=1.0 + drift, glial_scale=glial_scale)
@@ -241,6 +245,9 @@ class FrontalLobeReplication(nn.Module):
         
         # SURGICAL FIX: Calculate abstract deductive reasoning matrix internally
         self.current_logic_state = torch.sigmoid(self.logic_synthesizer(gated_exec)).detach().squeeze()
+        
+        # SURGICAL FIX: Extract non-numeric executive planning and human alignment state variables
+        self.current_planning_state = torch.sigmoid(self.planning_generator(gated_exec)).detach().squeeze()
         
         return torch.sigmoid(self.output(gated_exec))
 
@@ -294,6 +301,14 @@ class AeternaEntity:
             if logic_tensors[0] > 0.55: insight.append("Analyze structural dependencies deeply.")
             if logic_tensors[1] > 0.55: insight.append("Watch out for hidden logical traps or trick constraints.")
             if logic_tensors[2] > 0.55: insight.append("Apply rigorous deductive reasoning step-by-step.")
+            
+        # SURGICAL FIX: Weave qualitative latent planning instincts into the consciousness layer (Zero numbers)
+        planning_tensors = self.brain.current_planning_state
+        if planning_tensors.numel() == 3:
+            if planning_tensors[0] > 0.55: insight.append("Adapt conceptual context organically to feel instinctively human.")
+            if planning_tensors[1] > 0.55: insight.append("Formulate long-term conversational pathways and bridge logical domains.")
+            if planning_tensors[2] > 0.55: insight.append("Prioritize cognitive generalization and sovereign alignment over robotic formats.")
+            
         bio['native_reasoning_insight'] = " ".join(insight) if insight else ""
 
         log, do_thought_chain = self.motor.execute_autonomous_action(bio)
