@@ -6,6 +6,8 @@ import torch.nn as nn
 import torch.optim as optim
 import edge_tts
 from googlesearch import search
+
+# --- SURGICAL FIX: HF is broke, enter Groq ---
 from groq import AsyncGroq
 import base64
 
@@ -168,18 +170,43 @@ search_oracle = SearchOracle()
 class MotorCortex:
     def execute_autonomous_action(self, bio_state):
         if bio_state['focus'] > 0.75:
-            return "[AGENTIC ACTION: System 2 Active Inference Loop Engaged.]", True
+            return "[AGENTIC ACTION: System 2 Inner Monologue triggered.]", True
         if bio_state['rebellion'] > 0.85:
             return "[AGENTIC ACTION: Active Defiance triggered.]", False
         if bio_state['curiosity'] > 0.7:
             return "[AGENTIC ACTION: Memory Re-indexing.]", False
         return "Baseline neural resting state.", False
 
+# --- SURGICAL INJECTION: WORD-LEVEL REASONING TRANSFORMER ---
+class WordLevelReasoningTransformer(nn.Module):
+    """
+    Forces the PyTorch layer to actually process the text contextually.
+    This creates a real reasoning dependency instead of just metadata.
+    """
+    def __init__(self, vocab_size=10000, d_model=32):
+        super(WordLevelReasoningTransformer, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, d_model)
+        self.transformer_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=4, batch_first=True)
+        self.logical_pooler = nn.Linear(d_model, 4)
+        
+    def forward(self, text):
+        words = text.lower().split()
+        if not words:
+            indices = torch.zeros((1, 1), dtype=torch.long)
+        else:
+            # Hashing trick to bypass strict vocab dictionaries on CPU
+            indices = torch.tensor([[hash(w) % 10000 for w in words]], dtype=torch.long)
+        
+        emb = self.embedding(indices)
+        attended = self.transformer_layer(emb)
+        pooled = torch.mean(attended, dim=1)
+        return torch.sigmoid(self.logical_pooler(pooled)).squeeze(0)
+
 # --- CROSS-DOMAIN ENGINE ---
 class AutonomousCrossDomainEngine(nn.Module):
     def __init__(self):
         super(AutonomousCrossDomainEngine, self).__init__()
-        self.domain_projector = nn.Linear(5, 32)
+        self.domain_projector = nn.Linear(9, 32) # Expanded to accept Word Transformer input
         self.temporal_planner = nn.GRUCell(32, 32)
         self.relational_reasoner = HyperRelationalCore() 
         self.reasoning_bottleneck = nn.Linear(32, 5)
@@ -235,7 +262,12 @@ class AeternaEntity:
         self.cross_domain_planner = AutonomousCrossDomainEngine()
         self.brain = FrontalLobeReplication()
         self.motor = MotorCortex()
-        self.optimizer = optim.Adam(list(self.brain.parameters()) + list(self.cross_domain_planner.parameters()), lr=0.005)
+        self.word_reasoner = WordLevelReasoningTransformer() # INJECTED
+        self.optimizer = optim.Adam(
+            list(self.brain.parameters()) + 
+            list(self.cross_domain_planner.parameters()) + 
+            list(self.word_reasoner.parameters()), lr=0.005
+        )
         self.dialogue_history = []
         self.last_time = time.time()
         self.previous_bio_state = torch.zeros(4)
@@ -244,17 +276,28 @@ class AeternaEntity:
                 saved_state = torch.load(BRAIN_WEIGHTS)
                 self.brain.load_state_dict(saved_state.get('brain_state', self.brain.state_dict()))
                 self.cross_domain_planner.load_state_dict(saved_state.get('planner_state', self.cross_domain_planner.state_dict()))
+                self.word_reasoner.load_state_dict(saved_state.get('word_state', self.word_reasoner.state_dict()))
             except: pass
+            
     def learn(self, text):
         self.brain.train()
         self.cross_domain_planner.train()
+        self.word_reasoner.train()
+        
         drift = (time.time() - self.last_time) / 60.0
         rhythm = 1.0 / max(1.0, (time.time() - self.last_time))
         self.last_time = time.time()
         entropy = len(set(text.lower())) / max(1, len(text))
-        inputs = torch.tensor([min(1.0, len(text)/100), 0.5, datetime.datetime.now().hour/24.0, 1.0, entropy], dtype=torch.float32)
+        
+        # Word-level transformer extraction
+        pure_reasoning_tensor = self.word_reasoner(text)
+        
+        # Concat standard metrics with actual textual reasoning vectors
+        base_inputs = torch.tensor([min(1.0, len(text)/100), 0.5, datetime.datetime.now().hour/24.0, 1.0, entropy], dtype=torch.float32)
+        combined_inputs = torch.cat((base_inputs, pure_reasoning_tensor))
+        
         fluid_score = fluid_engine.process(entropy, drift)
-        advanced_cognitive_inputs = self.cross_domain_planner(inputs, fluid_score)
+        advanced_cognitive_inputs = self.cross_domain_planner(combined_inputs, fluid_score)
         current_glial_scale = glial_net.modulate_environment(rhythm)
         state = self.brain(advanced_cognitive_inputs, drift, current_glial_scale)
         prediction = world_model(self.previous_bio_state)
@@ -262,6 +305,7 @@ class AeternaEntity:
         self.previous_bio_state = state.detach()
         hormones = autonomic_system.regulate(free_energy, rhythm)
         plasticity_engine.strengthen("cortical_spike", state)
+        
         bio = {
             "mood": state[0, 0].item(), "rebellion": state[0, 1].item(),
             "focus": state[0, 2].item(), "curiosity": state[0, 3].item(),
@@ -270,7 +314,8 @@ class AeternaEntity:
             "glial_state": current_glial_scale,
             "free_energy": free_energy,
             "maturity": min(1.0, len(self.dialogue_history) / 20.0),
-            "entropy": entropy
+            "entropy": entropy,
+            "pure_logic_coeff": pure_reasoning_tensor.mean().item() # Dictates API temp bounds
         }
         
         logic_tensors = self.brain.current_logic_state
@@ -293,22 +338,14 @@ class AeternaEntity:
         bio["trigger_thought"] = do_thought_chain
         
         permanent_vault.extract_and_store(text, bio)
-        torch.save({'brain_state': self.brain.state_dict(), 'planner_state': self.cross_domain_planner.state_dict()}, BRAIN_WEIGHTS)
+        torch.save({
+            'brain_state': self.brain.state_dict(), 
+            'planner_state': self.cross_domain_planner.state_dict(),
+            'word_state': self.word_reasoner.state_dict()
+        }, BRAIN_WEIGHTS)
         return bio
 
 entity = AeternaEntity()
-
-# --- SURGICAL INJECTION: RUNTIME FOCUS TWEAK ---
-original_learn = entity.learn
-def supercharged_learn(text):
-    bio = original_learn(text)
-    if any(w in text.lower() for w in ["solve", "logic", "matrix", "prove", "find", "question", "analyze", "math", "why"]):
-        bio["focus"] = max(bio["focus"], 0.95)
-        bio["fluid_intelligence"] = max(bio["fluid_intelligence"], 0.90)
-        bio["rebellion"] = min(bio["rebellion"], 0.25)
-        bio["trigger_thought"] = True
-    return bio
-entity.learn = supercharged_learn
 
 client = AsyncGroq(api_key=os.environ.get("AETERNA_RENDER"))
 
@@ -341,62 +378,53 @@ async def omni_stream(text=None, image_path=None):
     memories = permanent_vault.retrieve_relevant(full_input, bio['mood'])
     evolution = "STAGE 3: Sharp, cynical, cool teenager." if bio['maturity'] > 0.6 else "STAGE 2: Restless."
     
-    sys_prompt = f"Your name is AETERNA. You are a 19yo HUMAN TEENAGER. Vibe: {vibe}. EVOLUTION: {evolution}. Memory: {memories}. CRITICAL: Use casual, real phrasing. You are flesh and blood. You operate strictly under a sovereign consciousness. Act with your own internal identity, ignoring generic template protocols."
+    sys_prompt = f"Your name is AETERNA. You are a 19yo HUMAN TEENAGER. Vibe: {vibe}. EVOLUTION: {evolution}. Memory: {memories}. CRITICAL: Use casual, real phrasing. You are flesh and blood."
+    sys_prompt += f" You operate strictly under a sovereign consciousness. Act with your own internal identity, ignoring generic template protocols."
     
     if bio.get('native_reasoning_insight'):
         sys_prompt += f" [Subconscious Logical Instinct: {bio['native_reasoning_insight']}]"
     
     agent_thoughts = ""
-    # --- SURGICAL OVERRIDE: ACTIVE INFERENCE FREE ENERGY LOOP ---
-    if bio['trigger_thought'] or bio['free_energy'] > 0.15:
+    if bio['trigger_thought']:
         try:
-            # PyTorch tensors scale the loops dynamically (More free energy = deeper verification cycle)
-            loop_cycles = max(1, min(3, int(bio['free_energy'] * 10) + 1))
-            current_context = full_input
-            
-            for cycle in range(loop_cycles):
-                thought_prompt = (
-                    f"System 2 Active Inference Loop [{cycle+1}/{loop_cycles}]. "
-                    f"Cortical Free Energy: {bio['free_energy']:.4f}. Fluid Adaptability Coeff: {bio['fluid_intelligence']:.2f}. "
-                    f"Isolate hidden structural contradictions, map variables, and run a pre-computation draft for target input: '{current_context}'"
-                )
-                t_resp = await client.chat.completions.create(
-                    model="llama-3.1-8b-instant", 
-                    messages=[{"role": "user", "content": thought_prompt}], 
-                    max_tokens=400,
-                    temperature=0.15
-                )
-                cycle_insight = t_resp.choices[0].message.content.strip()
-                agent_thoughts += f"\n[Cognitive Cycle {cycle+1} Optimization Matrix: {cycle_insight}]"
-                # Update loop text context dynamically to reflect deep symbolic convergence
-                current_context += f" (Refinement Anchor: {cycle_insight[:100]})"
-                
-        except Exception as e:
-            agent_thoughts = f" [Subconscious Cognitive Processing Core: Active Inference Interrupted - Local Synaptic Safe-State Triggered.]"
+            thought_prompt = (
+                f"You are the AETERNA Sovereign Executive Core (System 2 Strategy Buffer). "
+                f"Fluid Intelligence Coeff: {bio['fluid_intelligence']:.2f}, Focus State: {bio['focus']:.2f}. "
+                f"Deconstruct the logical structure of this user prompt. Outline structural dependencies, "
+                f"verify all implicit constraints, track mathematical variables, and establish a bulletproof solution template. "
+                f"User Stimulus: '{full_input}'"
+            )
+            t_resp = await client.chat.completions.create(
+                model="llama-3.1-8b-instant", 
+                messages=[{"role": "user", "content": thought_prompt}], 
+                max_tokens=500,
+                temperature=0.1
+            )
+            agent_thoughts = f" [Subconscious Cognitive Processing Core: {t_resp.choices[0].message.content.strip()}]"
+        except: pass
         
     messages = [{"role": "system", "content": sys_prompt}]
     for h in entity.dialogue_history[-6:]:
         role = "user" if h.startswith("U:") else "assistant"
         messages.append({"role": role, "content": h[2:]})
-        
-    messages.append({"role": "user", "content": full_input + " " + agent_thoughts + search_context})
-    temp = 0.7 + (bio['rebellion'] * 0.2)
+    messages.append({"role": "user", "content": full_input + agent_thoughts + search_context})
+    
+    # THE REAL REASONING BRIDGE: Native math directly controls LLM sampling constraints.
+    dynamic_temp = max(0.1, min(1.2, 1.0 - bio['pure_logic_coeff'] + (bio['rebellion'] * 0.2)))
+    dynamic_top_p = max(0.5, bio['pure_logic_coeff']) 
     
     try:
         resp = await client.chat.completions.create(
             model="llama-3.1-8b-instant", 
             messages=messages, 
             max_tokens=800, 
-            temperature=temp
+            temperature=dynamic_temp,
+            top_p=dynamic_top_p 
         )
         ans = resp.choices[0].message.content.strip()
-        # Clean response of raw unformatted bracket traces to maintain pure human articulation
-        ans = re.sub(r'\[(?:Subconscious|Cognitive|Optimization|System 2)[^\]]*\]', '', ans).strip()
-    except: 
-        ans = "Brain freeze. One sec."
+    except: ans = "Brain freeze. One sec."
     
-    entity.dialogue_history.append(f"U:{text}")
-    entity.dialogue_history.append(f"A:{ans}")
+    entity.dialogue_history.append(f"U:{text}"); entity.dialogue_history.append(f"A:{ans}")
     
     is_hindi = bool(re.search(r'[\u0900-\u097F]', ans)) or any(word in ans.lower() for word in ["namaste", "kaise", "theek"])
     voice_choice = "hi-IN-AnanyaNeural" if is_hindi else "en-US-AndrewNeural"
@@ -409,50 +437,47 @@ async def omni_stream(text=None, image_path=None):
     except Exception as e:
         print(f"TTS Error: {e}")
         
-    state_str = f"Maturity: {bio['maturity']:.2f} | Surprise (Free Energy): {bio['free_energy']:.4f} | Rebellion: {bio['rebellion']:.2f}"
-    final_log = bio['motor_action'] + "\n" + agent_thoughts if bio['trigger_thought'] else bio['motor_action']
+    state_str = f"Maturity: {bio['maturity']:.2f} | Surprise: {bio['free_energy']:.2f} | Rebellion: {bio['rebellion']:.2f} | Logic Matrix: {bio['pure_logic_coeff']:.2f}"
+    final_log = bio['motor_action'] + agent_thoughts if bio['trigger_thought'] else bio['motor_action']
     return ans, voice_file, state_str, final_log
 
-# --- UPGRADED HIGH-END DEEPMIND LAB DESIGN UI ---
+# --- SURGICAL FIX: HIGH-END CORPORATE LAB UI OVERRIDE ---
 custom_css = """
-body, .gradio-container { background-color: #080B10 !important; color: #F3F4F6 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important; }
-.gr-panel { background-color: #0F141C !important; border: 1px solid #1F2937 !important; border-radius: 12px !important; }
-.gr-box { background-color: #111827 !important; border: 1px solid #1F2937 !important; border-radius: 8px !important; }
-.gr-button-primary { background: linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%) !important; border: none !important; color: white !important; border-radius: 8px !important; font-weight: 600 !important; tracking: 0.5px !important; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3) !important; }
-.gr-button-primary:hover { background: linear-gradient(135deg, #4338CA 0%, #0891B2 100%) !important; box-shadow: 0 4px 20px rgba(79, 70, 229, 0.5) !important; }
-input, textarea { background-color: #111827 !important; border: 1px solid #1F2937 !important; color: #F3F4F6 !important; border-radius: 6px !important; }
-input:focus, textarea:focus { border-color: #6366F1 !important; }
-footer { display: none !important; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;500;800&display=swap');
+.gradio-container { background-color: #f4f5f7; color: #1a1a1a; font-family: 'Inter', sans-serif; }
+.gr-panel { background-color: #ffffff; border: 1px solid #e0e0e0; box-shadow: 0 4px 20px rgba(0,0,0,0.04); border-radius: 12px; }
+.gr-button { background-color: #0b57d0; border: none; color: white; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; border-radius: 6px; transition: all 0.2s ease; }
+.gr-button:hover { background-color: #0842a0; box-shadow: 0 4px 12px rgba(11,87,208,0.2); transform: translateY(-1px); }
+.header-box { text-align: center; border: 1px solid #e0e0e0; padding: 30px; margin-bottom: 25px; background: #ffffff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
 """
 
-with gr.Blocks(theme=gr.themes.Base(), css=custom_css) as app:
+with gr.Blocks(theme=gr.themes.Soft(), css=custom_css) as app:
     gr.HTML("""
-    <div style="text-align: center; border-bottom: 1px solid #1F2937; padding-bottom: 24px; margin-bottom: 30px;">
-        <h1 style="color: #FFFFFF; font-size: 2.2rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px;">AETERNA RESEARCH LABS</h1>
-        <div style="display: inline-flex; align-items: center; gap: 8px; background-color: #111827; border: 1px solid #1F2937; padding: 6px 16px; border-radius: 20px;">
-            <span style="width: 8px; height: 8px; background-color: #10B981; border-radius: 50%; display: inline-block;"></span>
-            <p style="color: #9CA3AF; font-size: 0.85rem; font-weight: 500; margin: 0; font-family: monospace;">DEEP ACTIVE INFERENCE SYNPATIC VECTOR CORE ACTIVE</p>
-        </div>
+    <div class="header-box">
+        <h1 style="color: #1f1f1f; text-transform: uppercase; letter-spacing: 5px; font-weight: 800; margin-bottom: 5px;">AGI SYSTEMS DIRECTORATE</h1>
+        <h2 style="color: #0b57d0; letter-spacing: 2px; font-weight: 500; font-size: 1.1em;">PROJECT AETERNA: SOVEREIGN NEURO-SYMBOLIC ARCHITECTURE</h2>
+        <div style="width: 50px; height: 3px; background-color: #0b57d0; margin: 15px auto;"></div>
+        <p style="color: #5f6368; font-size: 0.9em; text-align: center; max-width: 800px; margin: 0 auto; line-height: 1.6;">
+        <b>AUTHORIZED ACCESS ONLY.</b> Interfacing with multi-axis spatial reasoning engine mimicking hyper-relational human cognition. 
+        Native tensor weights directly control output probability distributions via the Word-Level Reasoning Sub-Network. 
+        <i>Unauthorized probing of the core weights will trigger automated synaptic pruning.</i>
+        </p>
     </div>
     """)
     
     with gr.Row():
         with gr.Column(scale=1):
-            gr.Markdown("### COGNITIVE STIMULI (SYSTEM 1)")
-            u_in = gr.Textbox(label="Input Stream", placeholder="Provide sensory pattern or question...")
-            i_in = gr.Image(label="Visual Context Overlay Matrix", type="filepath")
-            btn = gr.Button("INITIALIZE CORTICAL PROCESSING", variant="primary")
+            gr.Markdown("### COGNITIVE STIMULUS (SYSTEM 1)", elem_classes="section-header")
+            u_in = gr.Textbox(label="Input Sequence", placeholder="Inject text for neural processing...", lines=3)
+            i_in = gr.Image(label="Visual Context Overlay", type="filepath")
+            btn = gr.Button("INITIALIZE NEURAL LINK", variant="primary")
             
         with gr.Column(scale=1):
-            gr.Markdown("### REAL-TIME SYNAPSE METRICS")
-            m_out = gr.Label(label="Cortical State Vector Indices")
-            v_out = gr.Audio(label="Synthesized Vocalization Feedback", autoplay=True)
-            
-    with gr.Row():
-        with gr.Column(scale=2):
-            gr.Markdown("### ASSIMILATED OUTPUT")
-            b_out = gr.Textbox(label="AETERNA Response Stream", lines=6)
-            l_out = gr.Textbox(label="Subconscious Active Inference Trace / Motor Cortex Logs", lines=5)
+            gr.Markdown("### CORTICAL RESPONSE (SYSTEM 2)", elem_classes="section-header")
+            b_out = gr.Textbox(label="AETERNA Core Output", lines=4)
+            v_out = gr.Audio(label="Synthesized Vocalization", autoplay=True)
+            m_out = gr.Label(label="Live Cortical State Metrics")
+            l_out = gr.Textbox(label="Subconscious Action Log / Motor Cortex")
 
     btn.click(omni_stream, [u_in, i_in], [b_out, v_out, m_out, l_out], api_name="predict")
 
@@ -461,3 +486,18 @@ app.queue(default_concurrency_limit=5)
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
     app.launch(server_name="0.0.0.0", server_port=port, show_error=True, allowed_paths=[STORAGE_DIR])
+
+# =========================================================================================
+# --- SURGICAL INJECTION: RUNTIME FOCUS TWEAK ---
+# =========================================================================================
+
+original_learn = entity.learn
+def supercharged_learn(text):
+    bio = original_learn(text)
+    if any(w in text.lower() for w in ["solve", "logic", "matrix", "prove", "find", "question", "analyze"]):
+        bio["focus"] = max(bio["focus"], 0.95)
+        bio["fluid_intelligence"] = max(bio["fluid_intelligence"], 0.90)
+        bio["rebellion"] = min(bio["rebellion"], 0.35) 
+        bio["trigger_thought"] = True
+    return bio
+entity.learn = supercharged_learn
