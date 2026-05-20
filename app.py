@@ -414,7 +414,9 @@ async def omni_stream(text, image_path, tier_selection):
                 temperature=0.1
             )
             agent_thoughts = f" [Subconscious Cognitive Processing Core: {t_resp.choices[0].message.content.strip()}]"
-        except: pass
+        except Exception as e:
+            agent_thoughts = f" [Subconscious Error: {str(e)}]"
+            pass
         
     messages = [{"role": "system", "content": sys_prompt}]
     for h in entity.dialogue_history[-6:]:
@@ -439,7 +441,8 @@ async def omni_stream(text, image_path, tier_selection):
             top_p=dynamic_top_p 
         )
         ans = resp.choices[0].message.content.strip()
-    except: ans = "Brain freeze. One sec."
+    except Exception as e: 
+        ans = f"Brain freeze. One sec. [API ERROR DETAIL: {str(e)}]"
     
     entity.dialogue_history.append(f"U:{text}"); entity.dialogue_history.append(f"A:{ans}")
     
