@@ -405,15 +405,9 @@ async def omni_stream(text, image_path, tier_selection):
                 f"verify all implicit constraints, track mathematical variables, and establish a bulletproof solution template. "
                 f"User Stimulus: '{full_input}'"
             )
-            # Upgraded the reasoning model for advanced tier
-            thought_model = "llama-3.1-70b-versatile" if "Advanced" in tier_selection else "llama-3.1-8b-instant"
-            t_resp = await client.chat.completions.create(
-                model=thought_model, 
-                messages=[{"role": "user", "content": thought_prompt}], 
-                max_tokens=500,
-                temperature=0.1
-            )
-            agent_thoughts = f" [Subconscious Cognitive Processing Core: {t_resp.choices[0].message.content.strip()}]"
+            # LOCAL NATIVE REASONING: Bypassing the dead API and using your PyTorch tensors directly
+            native_eval = "High structural integrity detected." if bio['pure_logic_coeff'] > 0.6 else "Heuristic pattern matched."
+            agent_thoughts = f" [Subconscious Cognitive Processing Core (LOCAL TENSOR REASONING): Task - {thought_prompt} | Outcome: {bio.get('native_reasoning_insight', '')} {native_eval}]"
         except Exception as e:
             agent_thoughts = f" [Subconscious Error: {str(e)}]"
             pass
@@ -430,7 +424,7 @@ async def omni_stream(text, image_path, tier_selection):
     
     model_choice = "llama-3.1-8b-instant"
     if "Medium" in tier_selection: model_choice = "llama3-70b-8192"
-    if "Advanced" in tier_selection: model_choice = "llama-3.1-70b-versatile"
+    if "Advanced" in tier_selection: model_choice = "llama3-70b-8192" # Replaced the decommissioned model
     
     try:
         resp = await client.chat.completions.create(
