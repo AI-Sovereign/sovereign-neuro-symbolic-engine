@@ -1,4 +1,4 @@
-Import gradio as gr
+import gradio as gr
 import random, os, asyncio, uuid, datetime, time, json
 import urllib.request, re, collections
 import torch
