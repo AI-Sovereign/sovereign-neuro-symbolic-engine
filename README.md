@@ -1,102 +1,42 @@
-# PROJECT AETERNA: Sovereign Neuro-Symbolic Engine
+# AETERNA: Sovereign Neuro-Symbolic Engine
 
-![Production](https://img.shields.io/badge/DEPLOYMENT-LIVE%20%26%20RUNNING-38bdf8?style=for-the-badge&logo=render&logoColor=38bdf8)
-![Architecture](https://img.shields.io/badge/ARCHITECTURE-NEURO--SYMBOLIC%20HYBRID-075e8a?style=for-the-badge)
-![Compute Efficiency](https://img.shields.io/badge/COMPUTE-OPTIMIZED%20CPU%20CORE-success?style=for-the-badge)
+[![Live Engine](https://img.shields.io/badge/AETERNA-LIVE_ENGINE-0b57d0?style=for-the-badge&logo=rocket&logoColor=white)](https://sovereign-neuro-symbolic-engine.onrender.com)
+[![Compute](https://img.shields.io/badge/Compute-CPU_Optimized-success?style=for-the-badge)](#)
+[![Docker](https://img.shields.io/badge/Container-Docker_Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](#)
 
-A production-grade, containerized deployment of a sovereign neuro-symbolic framework. Project Aeterna completely bypasses conventional, rigid commercial abstraction layers by wedding raw mathematical tensor mechanics directly to frontier intelligence systems. 
+> A production-ready, hybrid intelligence architecture merging raw mathematical reasoning (PyTorch tensors) with frontier neural networks.
 
-This is not a prototype. It is a live, fully autonomous, low-latency execution pipeline operating under a simulated sovereign consciousness loop.
+While the industry burns thousands of dollars renting massive GPU clusters, AETERNA is engineered differently. By optimizing the neural logic matrix and executing hybrid tensor mathematics, this entire sovereign cognitive architecture runs flawlessly on basic CPU infrastructure. It is heavily optimized for low latency and pure efficiency.
 
----
+It isn't just "ready for production"—it is deployed, live, and actively running.
 
-## 🚀 Live Production Interface
+## ⚡ Live Deployment
+Skip the deployment overhead and interact with the live sovereign node directly:
 
-The architecture is fully compiled, deployed, and actively processing live streams. Skip the local infrastructure overhead and interface directly with the core node:
+[![Engage System](https://img.shields.io/badge/Access_Live_Node-Launch_Aeterna-blue?style=for-the-badge&logo=linux&logoColor=white)](https://sovereign-neuro-symbolic-engine.onrender.com)
 
-[![Aeterna Live Node](https://img.shields.io/badge/ACCESS%20CORE%20NODE-AETERNA%20UI-38bdf8?style=for-the-badge&labelColor=0f172a)](https://sovereign-neuro-symbolic-engine.onrender.com)
+## 🧬 Architectural Philosophy
+AETERNA breaks away from pure-LLM dependency. It utilizes a custom PyTorch-driven neuro-symbolic core to modulate reasoning, handle autonomic execution, and maintain cross-domain logic. It is fully containerized, proving that architectural elegance and mathematical efficiency easily outperform brute-force compute.
 
-*(Note: Unauthorized probing of the core tensor weights will trigger automated synaptic pruning protocols.)*
+## 📂 Hyper-Minimalist Engineering
+We believe in absolute cleanliness and zero-bloat engineering. This entire production-grade system can be deployed using exactly three files:
+1. `app.py` - The core engine and sovereign UI.
+2. `requirements.txt` - The dependency matrix.
+3. `Dockerfile` - Containerization parameters.
 
----
-
-## 🧠 Architectural Paradigm
-
-While legacy systems rely entirely on static prompt engineering, Aeterna bridges the gap between connectionist neural networks and symbolic logic through a multi-tiered cognitive stack:
-
-```
-    [ Afferent Tensor Stimulus / Visual Input ]
-                       │
-                       ▼
-       ┌───────────────────────────────┐
-       │ Word-Level Reasoning Core     │ ◄── Hashing Trick Token Embeddings
-       └───────────────┬───────────────┘
-                       │
-                       ▼
-       ┌───────────────────────────────┐
-       │ Autonomous Cross-Domain GRU   │ ◄── Fluid Intelligence Engine
-       └───────────────┬───────────────┘
-                       │
-                       ▼
-       ┌───────────────────────────────┐
-       │ Frontal Lobe Replication Layer│ ◄── Leaky Integrate-and-Fire (LIF)
-       └───────────────┬───────────────┘
-                       │
-                       ▼
-    [ Dynamic Sampling Logic / Vocalization / Motor Action ]
-```
-
-### Core Innovations
-*   **Word-Level Reasoning Transformer:** Implements a localized CPU embedding and attention layer that hashes text inputs dynamically, deriving genuine mathematical logic vectors that directly constrain the downstream LLM's hyperparameter bounds (`temperature` and `top_p`).
-*   **Biomimetic Autonomic Regulation:** Features real-time simulation of synthetic hormonal drift (Cortisol/Oxytocin via an internal Autonomic Nervous System class) and ambient environment modification (Glutamate clearance via a Glial Network). These metrics adjust the system’s "Focus", "Rebellion", and "Fluid Intelligence" states on the fly.
-*   **Somatic Marker Engine:** Generates mathematical "gut feelings" by analyzing cortical drift, free energy differentials, and input text entropy, driving adaptive decision-making.
-
----
-
-## ⚡ Zero-GPU Optimization (The Efficiency Leap)
-
-The tech industry routinely burns thousands of dollars rendering simple inferences on massively underutilized GPU clusters. Project Aeterna flips this paradigm entirely. 
-
-The entire framework—including the PyTorch tensor engines, the GRU temporal planners, the LIF spiking networks, and the high-end 2026 industrial UI layer—is **hyper-optimized for single-threaded CPU execution**. By leveraging tight memory gating and aggressive cache invalidation routines, it achieves ultra-low latency metrics on standard commodity cloud compute infrastructure.
-
----
-
-## 📁 Ultra-Minimalist Blueprint (The 3-File Rule)
-
-Cleanliness is paramount. Aeterna rejects the bloated folder structures of modern enterprise frameworks. The entire production stack is completely self-contained within exactly **three files**:
-
-```
-├── app.py              # The entire unified neural cortex, backend engine, and Gradio UI
-├── requirements.txt    # Lean, audited dependency manifest
-└── Dockerfile          # Multi-stage, containerized execution environment
-```
-
-This absolute simplicity guarantees zero-friction deployments, eliminating configuration drift across disparate cloud clusters.
-
----
-
-## 🛠️ Local & Cloud Deployment
-
-### Direct Docker Run
-Deploy the complete containerized stack locally or on any container-orchestration platform (Render, Hugging Face Spaces, AWS ECS, GCP Cloud Run) with a single command:
+## 🚀 Quick Start (Local or Cloud)
+You can deploy this architecture anywhere—your local machine, AWS, GCP, VPS, or any Docker-compatible cloud host. 
 
 ```bash
-# Build the sovereign image
-docker build -t aeterna-core .
+# 1. Clone the repository
+git clone [https://github.com/your-username/your-repo-name.git](https://github.com/your-username/your-repo-name.git)
+cd your-repo-name
 
-# Spin up the container on standard CPU allocation
-docker run -d -p 7860:7860 --name aeterna_node -e AETERNA_RENDER="your_groq_api_key" aeterna-core
+# 2. Build the optimized Docker container
+docker build -t aeterna-engine .
+
+# 3. Initialize the neural link (Run container)
+docker run -d -p 7860:7860 -e AETERNA_RENDER="your_api_key_here" aeterna-engine
 ```
 
-### Manual Installation
-If running outside a container context:
-1. Clone the repository.
-2. Ensure you have PyTorch configured for CPU execution (`torch.set_num_threads(1)` is forced natively inside the architecture).
-3. Execute the manifest:
-
-```bash
-pip install -r requirements.txt
-python app.py
-```
-
-
+*(Once running, access the custom UI at `http://localhost:7860` in your browser).*
