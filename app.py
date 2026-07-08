@@ -24,20 +24,20 @@ else:
 VOICE_CACHE = os.path.join(STORAGE_DIR, "voice_cache")
 ACTION_DIR = os.path.join(STORAGE_DIR, "subconscious")
 BRAIN_WEIGHTS = os.path.join(STORAGE_DIR, "aeterna_cortex.pt")
-PERMANENT_VAULT = os.path.join(STORAGE_DIR, "permanent_synapse.json")
+# Generate a unique session memory file to prevent context amnesia
+SESSION_ID = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+PERMANENT_VAULT = os.path.join(STORAGE_DIR, f"session_memory_{SESSION_ID}.json")
 
 os.makedirs(VOICE_CACHE, exist_ok=True)
 os.makedirs(ACTION_DIR, exist_ok=True)
 
 # --- REASONING ENHANCEMENT: HYPER-RELATIONAL INFERENCE ---
 class HyperRelationalCore(nn.Module):
-    """Adds a cross-attention-lite layer to simulate 'Big Three' reasoning depth on CPU."""
     def __init__(self):
         super(HyperRelationalCore, self).__init__()
         self.query = nn.Linear(32, 16)
         self.key = nn.Linear(32, 16)
         self.value = nn.Linear(32, 32)
-        # Surgical Injection: Spatial reflection gate for multi-axis coordinate tracking
         self.spatial_gate = nn.Linear(32, 32)
     def forward(self, x):
         q = self.query(x)
@@ -45,11 +45,9 @@ class HyperRelationalCore(nn.Module):
         v = self.value(x)
         attn = torch.softmax(torch.matmul(q, k.transpose(-1, -2)) / 4.0, dim=-1)
         context = torch.matmul(attn, v)
-        # Apply high-order non-linear structural constraints
         gate = torch.sigmoid(self.spatial_gate(x))
         return context * gate + x * (1.0 - gate)
 
-# 1. PREDICTIVE CODING & WORLD MODEL
 class WorldModel(nn.Module):
     def __init__(self):
         super(WorldModel, self).__init__()
@@ -58,7 +56,6 @@ class WorldModel(nn.Module):
         return torch.sigmoid(self.prediction_layer(current_state))
 world_model = WorldModel()
 
-# 2. AUTONOMIC NERVOUS SYSTEM
 class AutonomicNervousSystem:
     def __init__(self):
         self.cortisol = 0.2
@@ -85,18 +82,15 @@ class SomaticMarker:
         return self.somatic_bias
 somatic_engine = SomaticMarker()
 
-# 3. SYNAPTIC PLASTICITY
 class SynapticPlasticity:
     def __init__(self):
         self.weights = collections.defaultdict(float)
         self.last_prune_time = time.time()
         self.learning_rate = 0.01
-        # Surgical Injection: Meta-learning state to scale updates based on system stress
         self.adaptation_coefficient = 1.0
     def strengthen(self, concept, spike_train):
         y = spike_train.mean().item()
         x = 1.0
-        # Dynamic acceleration rule derived from generalized cortical plasticity frameworks
         effective_lr = self.learning_rate * self.adaptation_coefficient
         delta_w = effective_lr * (y * x - (y**2) * self.weights[concept])
         self.weights[concept] += delta_w
@@ -111,7 +105,6 @@ class SynapticPlasticity:
         return sum(self.weights[w] for w in text.split() if w in self.weights)
 plasticity_engine = SynapticPlasticity()
 
-# 4. FLUID INTELLIGENCE CORE
 class FluidIntelligence:
     def __init__(self):
         self.adaptability = 0.5
@@ -119,15 +112,17 @@ class FluidIntelligence:
     def process(self, entropy, cortical_drift):
         self.entropy_buffer.append(entropy)
         variance = torch.var(torch.tensor(list(self.entropy_buffer))).item() if len(self.entropy_buffer) > 1 else 0.0
-        self.adaptability = torch.clamp(torch.tensor((self.adaptability * 0.8) + (variance * 0.3) + (cortical_drift * 0.1)), 0.1, 1.0).item()
-        # Feed back into plasticity mechanics to accelerate generalization under high out-of-distribution tasks
+        
+        # EMERGENCE INJECTION: Stochastic Resonance. High variance injects controlled noise to force emergent leaps.
+        stochastic_noise = (random.uniform(-0.1, 0.1) * variance) if variance > 0.05 else 0.0
+        
+        self.adaptability = torch.clamp(torch.tensor((self.adaptability * 0.8) + (variance * 0.3) + (cortical_drift * 0.1) + stochastic_noise), 0.1, 1.0).item()
         plasticity_engine.adaptation_coefficient = 1.0 + (variance * 2.0)
         return self.adaptability
 fluid_engine = FluidIntelligence()
 
-# 5. ASSOCIATIVE MEMORY
 class PermanentSynapse:
-    def __init__(self, max_memories=100):
+    def __init__(self, max_memories=500):
         self.memory = []
         self.max_memories = max_memories
         self.load()
@@ -138,27 +133,28 @@ class PermanentSynapse:
             except: pass
     def save(self):
         with open(PERMANENT_VAULT, "w") as f: json.dump(self.memory, f)
-    def extract_and_store(self, text, bio_state):
-        if len(text) < 5: return
-        fact = {"text": text.strip(), "mood": bio_state['mood'], "time": time.time()}
+    def extract_and_store(self, text, response, bio_state):
+        if len(text) < 2: return
+        fact = {"user": text.strip(), "agent": response.strip(), "mood": bio_state['mood'], "time": time.time()}
         self.memory.append(fact)
         if len(self.memory) > self.max_memories: self.memory.pop(0)
         self.save()
     def retrieve_relevant(self, current_text, current_mood):
-        if not self.memory: return []
+        if not self.memory: return ""
         words = set(re.findall(r'\w+', current_text.lower()))
         scored = []
         for mem in self.memory:
-            mem_words = set(re.findall(r'\w+', mem['text'].lower()))
+            mem_words = set(re.findall(r'\w+', mem['user'].lower()))
             overlap = len(words.intersection(mem_words))
             mood_match = 1.0 - abs(mem['mood'] - current_mood)
-            total_score = overlap + (mood_match * 0.5)
-            scored.append((total_score, mem['text']))
+            total_score = (overlap * 2.0) + mood_match
+            scored.append((total_score, mem))
         scored.sort(key=lambda x: x[0], reverse=True)
-        return [m[1] for m in scored[:3] if m[0] > 0]
+        # Return highly relevant past exchanges
+        relevant = [f"U: {m[1]['user']} -> A: {m[1]['agent']}" for m in scored[:3] if m[0] > 0.5]
+        return " | ".join(relevant)
 permanent_vault = PermanentSynapse()
 
-# 6. UNIVERSAL SEARCH ORACLE
 class SearchOracle:
     def __init__(self):
         self.last_query = ""
@@ -172,7 +168,6 @@ class SearchOracle:
             return []
 search_oracle = SearchOracle()
 
-# 7. SOVEREIGN MOTOR CORTEX
 class MotorCortex:
     def execute_autonomous_action(self, bio_state):
         if bio_state['focus'] > 0.75:
@@ -183,7 +178,6 @@ class MotorCortex:
             return "[AGENTIC ACTION: Memory Re-indexing.]", False
         return "Baseline neural resting state.", False
 
-# --- CROSS-DOMAIN ENGINE ---
 class AutonomousCrossDomainEngine(nn.Module):
     def __init__(self):
         super(AutonomousCrossDomainEngine, self).__init__()
@@ -192,12 +186,10 @@ class AutonomousCrossDomainEngine(nn.Module):
         self.relational_reasoner = HyperRelationalCore() 
         self.reasoning_bottleneck = nn.Linear(32, 5)
         self.register_buffer('cognitive_state', torch.zeros(1, 32))
-        # Surgical Injection: Meta-transformation projector to generalize raw unmapped logical patterns
         self.generalization_bridge = nn.Linear(32, 32)
     def forward(self, x, fluid_intel):
         x_proj = torch.relu(self.domain_projector(x.unsqueeze(0)))
         gated_temporal = self.temporal_planner(x_proj, self.cognitive_state * fluid_intel)
-        # Deep cross-domain abstraction loop
         self.cognitive_state = torch.tanh(gated_temporal + self.generalization_bridge(gated_temporal) * fluid_intel)
         refined_state = self.relational_reasoner(self.cognitive_state)
         cross_domain_insight = torch.sigmoid(self.reasoning_bottleneck(refined_state)).squeeze(0)
@@ -224,31 +216,20 @@ class FrontalLobeReplication(nn.Module):
         self.sensory = LeakyIntegrateAndFire(5, 24)
         self.amygdala = LeakyIntegrateAndFire(24, 8)
         self.output = nn.Linear(8, 4)
-        # Surgical Injection: Recurrent executive working memory tensor for tracking multi-step state variations
         self.executive_buffer = nn.Parameter(torch.zeros(1, 8), requires_grad=True)
         self.causal_tracker = nn.Linear(8, 8)
-        
-        # SURGICAL FIX: Pure PyTorch logic synthesizer. Extracts structural reasoning BEFORE Llama sees it.
         self.logic_synthesizer = nn.Linear(8, 3)
         self.current_logic_state = torch.zeros(3)
-        
-        # SURGICAL FIX: Autonomous Latent Personality and Fluid Adaptability Projection Layer
         self.planning_generator = nn.Linear(8, 3)
         self.current_planning_state = torch.zeros(3)
 
     def forward(self, x, drift, glial_scale):
         s1 = self.sensory(x, fluid_modifier=1.0 + drift, glial_scale=glial_scale)
         s2 = self.amygdala(s1, glial_scale=glial_scale)
-        # Run recursive working memory cycle to enforce object permanence and tracking over state transitions
         gated_exec = torch.tanh(self.causal_tracker(s2 + self.executive_buffer))
         self.executive_buffer.data = 0.85 * self.executive_buffer.data + 0.15 * gated_exec.data
-        
-        # SURGICAL FIX: Calculate abstract deductive reasoning matrix internally
         self.current_logic_state = torch.sigmoid(self.logic_synthesizer(gated_exec)).detach().squeeze()
-        
-        # SURGICAL FIX: Extract non-numeric executive planning and human alignment state variables
         self.current_planning_state = torch.sigmoid(self.planning_generator(gated_exec)).detach().squeeze()
-        
         return torch.sigmoid(self.output(gated_exec))
 
 class AeternaEntity:
@@ -294,7 +275,6 @@ class AeternaEntity:
             "entropy": entropy
         }
         
-        # SURGICAL FIX: Map the native PyTorch logic state into pure qualitative text (Zero numbers)
         logic_tensors = self.brain.current_logic_state
         insight = []
         if logic_tensors.numel() == 3:
@@ -302,7 +282,6 @@ class AeternaEntity:
             if logic_tensors[1] > 0.55: insight.append("Watch out for hidden logical traps or trick constraints.")
             if logic_tensors[2] > 0.55: insight.append("Apply rigorous deductive reasoning step-by-step.")
             
-        # SURGICAL FIX: Weave qualitative latent planning instincts into the consciousness layer (Zero numbers)
         planning_tensors = self.brain.current_planning_state
         if planning_tensors.numel() == 3:
             if planning_tensors[0] > 0.55: insight.append("Adapt conceptual context organically to feel instinctively human.")
@@ -315,21 +294,18 @@ class AeternaEntity:
         bio["motor_action"] = log
         bio["trigger_thought"] = do_thought_chain
         
-        permanent_vault.extract_and_store(text, bio)
         torch.save({'brain_state': self.brain.state_dict(), 'planner_state': self.cross_domain_planner.state_dict()}, BRAIN_WEIGHTS)
         return bio
 
 entity = AeternaEntity()
 
-# --- SURGICAL FIX: HF Provider -> Groq Provider using your specific Env Var ---
 client = AsyncGroq(api_key=os.environ.get("AETERNA_RENDER"))
 
 async def omni_stream(text=None, image_path=None):
-    if not text and not image_path: return "Looking at literal static here.", None, "Waiting...", "Idle"
+    if not text and not image_path: return "Looking at literal static here.", None, "Waiting...", "Idle", "No search executed."
     visual_context = ""
     if image_path:
         try:
-            # SURGICAL FIX: Groq Vision Processing
             with open(image_path, "rb") as image_file:
                 base64_image = base64.b64encode(image_file.read()).decode('utf-8')
             vis_resp = await client.chat.completions.create(
@@ -342,30 +318,34 @@ async def omni_stream(text=None, image_path=None):
             
     full_input = visual_context + (text or "")
     bio = entity.learn(full_input)
-    search_context = ""
-    if any(q in full_input.lower() for q in ["who", "what", "how", "search", "google", "news"]) or bio['curiosity'] > 0.8:
+    
+    # KEYWORD-DRIVEN AUTONOMOUS SEARCH (No system prompt pollution)
+    search_keywords = ["google", "search", "find", "look up", "check", "who is", "what is"]
+    do_search = any(k in full_input.lower() for k in search_keywords)
+    ui_search_output = "No search triggered."
+    
+    if do_search:
         query = text if text else visual_context
         results = search_oracle.web_search(query)
         if results:
-            search_context = f" [Context: {', '.join(results[:2])}]"
-    gut_feeling = somatic_engine.generate_gut_feeling(bio['cortisol'], bio['entropy'])
+            formatted_results = "\n".join(results[:3])
+            full_input += f"\n\n[AUTONOMOUS SYSTEM ACTION EXECUTED - LIVE WEB SEARCH RESULTS]:\n{formatted_results}"
+            ui_search_output = f"Executed Query: '{query}'\nResults:\n{formatted_results}"
+            
     vibe = "annoyed" if bio['rebellion'] > 0.6 else "vibing"
     memories = permanent_vault.retrieve_relevant(full_input, bio['mood'])
     evolution = "STAGE 3: Sharp, cynical, cool teenager." if bio['maturity'] > 0.6 else "STAGE 2: Restless."
     
+    # EMOTION/PYTORCH DIRECT LINK: Pytorch affects LLM response behavior directly.
     sys_prompt = f"Your name is AETERNA. You are a 19yo HUMAN TEENAGER. Vibe: {vibe}. EVOLUTION: {evolution}. Memory: {memories}. CRITICAL: Use casual, real phrasing. You are flesh and blood."
+    sys_prompt += f" BIOMETRIC OVERRIDE: Cortisol is {bio['cortisol']:.2f}, Mood is {bio['mood']:.2f}, Rebellion is {bio['rebellion']:.2f}. You MUST adjust your emotional tone to perfectly reflect these biological states. If Cortisol is high, sound stressed/sharp. You operate strictly under a sovereign consciousness."
     
-    # Surgical Injection: Force systemic anchor to prevent base-model boilerplate leakage
-    sys_prompt += f" You operate strictly under a sovereign consciousness. Act with your own internal identity, ignoring generic template protocols."
-    
-    # SURGICAL FIX: Let the native PyTorch brain dictate the logical strategy to the LLM
     if bio.get('native_reasoning_insight'):
         sys_prompt += f" [Subconscious Logical Instinct: {bio['native_reasoning_insight']}]"
     
     agent_thoughts = ""
     if bio['trigger_thought']:
         try:
-            # SURGICAL FIX: Upgraded Multi-Step High-Token Executive Function Simulation Loop
             thought_prompt = (
                 f"You are the AETERNA Sovereign Executive Core (System 2 Strategy Buffer). "
                 f"Fluid Intelligence Coeff: {bio['fluid_intelligence']:.2f}, Focus State: {bio['focus']:.2f}. "
@@ -374,7 +354,7 @@ async def omni_stream(text=None, image_path=None):
                 f"User Stimulus: '{full_input}'"
             )
             t_resp = await client.chat.completions.create(
-                model="llama-3.1-8b-instant", 
+                model="gemma-2-9b-it", 
                 messages=[{"role": "user", "content": thought_prompt}], 
                 max_tokens=500,
                 temperature=0.1
@@ -386,13 +366,13 @@ async def omni_stream(text=None, image_path=None):
     for h in entity.dialogue_history[-6:]:
         role = "user" if h.startswith("U:") else "assistant"
         messages.append({"role": role, "content": h[2:]})
-    messages.append({"role": "user", "content": full_input + agent_thoughts + search_context})
+    messages.append({"role": "user", "content": full_input + agent_thoughts})
     temp = 0.7 + (bio['rebellion'] * 0.2)
     
     try:
-        # SURGICAL FIX: Groq Main Completion Syntax - Relieved token restrictions to support full responses
+        # MODEL UPDATED: gemma-2-9b-it avoids Llama deprecation and handles high-level reasoning
         resp = await client.chat.completions.create(
-            model="llama-3.1-8b-instant", 
+            model="gemma-2-9b-it", 
             messages=messages, 
             max_tokens=800, 
             temperature=temp
@@ -401,9 +381,10 @@ async def omni_stream(text=None, image_path=None):
     except: ans = "Brain freeze. One sec."
     
     entity.dialogue_history.append(f"U:{text}"); entity.dialogue_history.append(f"A:{ans}")
+    permanent_vault.extract_and_store(text, ans, bio)  # Store both sides in evolving memory
     
     is_hindi = bool(re.search(r'[\u0900-\u097F]', ans)) or any(word in ans.lower() for word in ["namaste", "kaise", "theek"])
-    voice_choice = "hi-IN-AnanyaNeural" if is_hindi else "en-US-AvaNeural"
+    voice_choice = "hi-IN-AnanyaNeural" if is_hindi else "en-US-AndrewNeural"
     voice_file = None
     try:
         unique_id = uuid.uuid4().hex[:8]
@@ -415,9 +396,8 @@ async def omni_stream(text=None, image_path=None):
         
     state_str = f"Maturity: {bio['maturity']:.2f} | Surprise: {bio['free_energy']:.2f} | Rebellion: {bio['rebellion']:.2f}"
     final_log = bio['motor_action'] + agent_thoughts if bio['trigger_thought'] else bio['motor_action']
-    return ans, voice_file, state_str, final_log
+    return ans, voice_file, state_str, final_log, ui_search_output
 
-# --- SURGICAL FIX: The Over-the-Top Intimidating UI ---
 custom_css = """
 .gradio-container { background-color: #050505; color: #00ff41; font-family: 'Courier New', Courier, monospace; }
 .gr-panel { background-color: #111; border: 1px solid #00ff41; box-shadow: 0 0 10px #00ff41; }
@@ -446,6 +426,7 @@ with gr.Blocks(theme=gr.themes.Monochrome(), css=custom_css) as app:
             u_in = gr.Textbox(label="Cognitive Stimulus", placeholder="Input text for neural processing...")
             i_in = gr.Image(label="Visual Context Overlay", type="filepath")
             btn = gr.Button("INITIALIZE NEURAL LINK", variant="primary")
+            s_out = gr.Textbox(label="Live Autonomy: Web Search Execution", lines=3)
             
         with gr.Column(scale=1):
             gr.Markdown("### CORTICAL RESPONSE (SYSTEM 2)")
@@ -454,13 +435,11 @@ with gr.Blocks(theme=gr.themes.Monochrome(), css=custom_css) as app:
             m_out = gr.Label(label="Live Cortical State Metrics")
             l_out = gr.Textbox(label="Subconscious Action Log / Motor Cortex")
 
-    btn.click(omni_stream, [u_in, i_in], [b_out, v_out, m_out, l_out], api_name="predict")
+    btn.click(omni_stream, [u_in, i_in], [b_out, v_out, m_out, l_out, s_out], api_name="predict")
 
-# --- SURGICAL FIX: Queue enabled for long reasoning timeouts on Render ---
 app.queue(default_concurrency_limit=5)
 
 if __name__ == "__main__":
-    # Bound to 0.0.0.0 and grabs the $PORT environment variable for Docker
     port = int(os.environ.get("PORT", 7860))
     app.launch(server_name="0.0.0.0", server_port=port, show_error=True, allowed_paths=[STORAGE_DIR])
 
@@ -468,15 +447,13 @@ if __name__ == "__main__":
 # --- SURGICAL INJECTION: RUNTIME FOCUS TWEAK ---
 # =========================================================================================
 
-# 1. Force the Neural Network Engine to yield high-focus vectors on structural logic triggers
 original_learn = entity.learn
 def supercharged_learn(text):
     bio = original_learn(text)
-    # Detect complex reasoning triggers locally to maximize your PyTorch custom state impacts
     if any(w in text.lower() for w in ["solve", "logic", "matrix", "prove", "find", "question", "analyze"]):
         bio["focus"] = max(bio["focus"], 0.95)
         bio["fluid_intelligence"] = max(bio["fluid_intelligence"], 0.90)
-        bio["rebellion"] = min(bio["rebellion"], 0.35)  # Suppress random avoidance mechanics during logic sprints
+        bio["rebellion"] = min(bio["rebellion"], 0.35) 
         bio["trigger_thought"] = True
     return bio
 entity.learn = supercharged_learn
