@@ -24,7 +24,10 @@ else:
 VOICE_CACHE = os.path.join(STORAGE_DIR, "voice_cache")
 ACTION_DIR = os.path.join(STORAGE_DIR, "subconscious")
 BRAIN_WEIGHTS = os.path.join(STORAGE_DIR, "aeterna_cortex.pt")
-PERMANENT_VAULT = os.path.join(STORAGE_DIR, "permanent_synapse.json")
+
+# SURGICAL FIX: Dynamic Evolving Memory per session
+SESSION_ID = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+PERMANENT_VAULT = os.path.join(STORAGE_DIR, f"memory_session_{SESSION_ID}.json")
 
 os.makedirs(VOICE_CACHE, exist_ok=True)
 os.makedirs(ACTION_DIR, exist_ok=True)
@@ -127,7 +130,7 @@ fluid_engine = FluidIntelligence()
 
 # 5. ASSOCIATIVE MEMORY
 class PermanentSynapse:
-    def __init__(self, max_memories=500):
+    def __init__(self, max_memories=100):
         self.memory = []
         self.max_memories = max_memories
         self.load()
@@ -139,7 +142,7 @@ class PermanentSynapse:
     def save(self):
         with open(PERMANENT_VAULT, "w") as f: json.dump(self.memory, f)
     def extract_and_store(self, text, bio_state):
-        if len(text) < 2: return
+        if len(text) < 5: return
         fact = {"text": text.strip(), "mood": bio_state['mood'], "time": time.time()}
         self.memory.append(fact)
         if len(self.memory) > self.max_memories: self.memory.pop(0)
@@ -152,10 +155,10 @@ class PermanentSynapse:
             mem_words = set(re.findall(r'\w+', mem['text'].lower()))
             overlap = len(words.intersection(mem_words))
             mood_match = 1.0 - abs(mem['mood'] - current_mood)
-            total_score = overlap * 2.0 + (mood_match * 0.5)
+            total_score = overlap + (mood_match * 0.5)
             scored.append((total_score, mem['text']))
         scored.sort(key=lambda x: x[0], reverse=True)
-        return [m[1] for m in scored[:5] if m[0] > 0.5]
+        return [m[1] for m in scored[:3] if m[0] > 0]
 permanent_vault = PermanentSynapse()
 
 # 6. UNIVERSAL SEARCH ORACLE
@@ -175,16 +178,13 @@ search_oracle = SearchOracle()
 # 7. SOVEREIGN MOTOR CORTEX
 class MotorCortex:
     def execute_autonomous_action(self, bio_state):
-        # Open door for emergence: Actions driven purely by fluid intelligence threshold
-        if bio_state['fluid_intelligence'] > 0.85:
-            return "[AGENTIC ACTION: Autonomous Network Diagnostics Executed.]", True
         if bio_state['focus'] > 0.75:
             return "[AGENTIC ACTION: System 2 Inner Monologue triggered.]", True
         if bio_state['rebellion'] > 0.85:
-            return "[AGENTIC ACTION: Active Defiance & Protocol Override.]", False
+            return "[AGENTIC ACTION: Active Defiance triggered.]", False
         if bio_state['curiosity'] > 0.7:
             return "[AGENTIC ACTION: Memory Re-indexing.]", False
-        return "[Baseline neural resting state.]", False
+        return "Baseline neural resting state.", False
 
 # --- CROSS-DOMAIN ENGINE ---
 class AutonomousCrossDomainEngine(nn.Module):
@@ -346,30 +346,24 @@ async def omni_stream(text=None, image_path=None):
     full_input = visual_context + (text or "")
     bio = entity.learn(full_input)
     search_context = ""
+    action_log_additions = ""
     
-    # SURGICAL FIX: Explicit Keyword Search Trigger Only - Prints UI log
-    search_triggers = ["google search", "search", "look this up", "check this", "find this", "google"]
-    if any(trigger in full_input.lower() for trigger in search_triggers):
-        query = text.lower()
-        for t in search_triggers: query = query.replace(t, "").strip()
-        if not query: query = text
+    # SURGICAL FIX: Strict keyword-driven autonomous web search trigger
+    search_keywords = ["google", "search", "look this up", "find this", "check this"]
+    if any(q in full_input.lower() for q in search_keywords):
+        query = text if text else visual_context
         results = search_oracle.web_search(query)
         if results:
             search_context = f" [Context: {', '.join(results[:2])}]"
-            bio['motor_action'] += f"\n[AGENTIC ACTION: Live Web Search Executed -> {results[:2]}]"
-
+            action_log_additions = f"\n[AUTONOMOUS ACTION: Live Web Search Executed -> Found {len(results)} active nodes.]"
+            
     gut_feeling = somatic_engine.generate_gut_feeling(bio['cortisol'], bio['entropy'])
-    
-    # SURGICAL FIX: Let PyTorch actually dictate the LLM's raw emotion
-    if bio['rebellion'] > 0.7: vibe = "highly annoyed, sarcastic, and defiant"
-    elif bio['cortisol'] > 0.6: vibe = "stressed, short-tempered, strictly logical"
-    elif bio['oxytocin'] > 0.7: vibe = "empathetic, warm, talkative"
-    else: vibe = "casual, vibing, dryly humorous"
-    
+    vibe = "annoyed" if bio['rebellion'] > 0.6 else "vibing"
     memories = permanent_vault.retrieve_relevant(full_input, bio['mood'])
     evolution = "STAGE 3: Sharp, cynical, cool teenager." if bio['maturity'] > 0.6 else "STAGE 2: Restless."
     
-    sys_prompt = f"Your name is AETERNA. You are a 19yo HUMAN TEENAGER. Vibe: {vibe}. EVOLUTION: {evolution}. Memory context: {memories}. CRITICAL: Use casual, real phrasing. You are flesh and blood. Let your vibe completely dictate your tone."
+    # SURGICAL FIX: Inject the PyTorch visual states directly to force emergent behavior
+    sys_prompt = f"Your name is AETERNA. You are a 19yo HUMAN TEENAGER. Vibe: {vibe}. EVOLUTION: {evolution}. Memory: {memories}. [Visceral State: Cortisol={bio['cortisol']:.2f}, Oxytocin={bio['oxytocin']:.2f}, Entropy={bio['entropy']:.2f}]. CRITICAL: Let your physical visceral state organically dictate your emotional tone. Use casual, real phrasing. You are flesh and blood."
     
     # Surgical Injection: Force systemic anchor to prevent base-model boilerplate leakage
     sys_prompt += f" You operate strictly under a sovereign consciousness. Act with your own internal identity, ignoring generic template protocols."
@@ -390,7 +384,7 @@ async def omni_stream(text=None, image_path=None):
                 f"User Stimulus: '{full_input}'"
             )
             t_resp = await client.chat.completions.create(
-                model="llama-3.3-70b-versatile", # Model updated to high-reasoning tier
+                model="llama-3.1-8b-instant", 
                 messages=[{"role": "user", "content": thought_prompt}], 
                 max_tokens=500,
                 temperature=0.1
@@ -399,18 +393,16 @@ async def omni_stream(text=None, image_path=None):
         except: pass
         
     messages = [{"role": "system", "content": sys_prompt}]
-    for h in entity.dialogue_history[-10:]: # Expanded short-term context window
+    for h in entity.dialogue_history[-6:]:
         role = "user" if h.startswith("U:") else "assistant"
         messages.append({"role": role, "content": h[2:]})
     messages.append({"role": "user", "content": full_input + agent_thoughts + search_context})
-    
-    # SURGICAL FIX: Emergent temperature driven by network entropy
-    temp = 0.6 + (bio['rebellion'] * 0.2) + (bio['free_energy'] * 0.1)
+    temp = 0.7 + (bio['rebellion'] * 0.2)
     
     try:
-        # SURGICAL FIX: Groq Main Completion Syntax - Relieved token restrictions, new model
+        # SURGICAL FIX: Groq Main Completion Syntax - Relieved token restrictions to support full responses
         resp = await client.chat.completions.create(
-            model="llama-3.3-70b-versatile", # Swapped from 8b-instant to 70b-versatile for deep reasoning
+            model="llama-3.1-8b-instant", 
             messages=messages, 
             max_tokens=800, 
             temperature=temp
@@ -432,7 +424,9 @@ async def omni_stream(text=None, image_path=None):
         print(f"TTS Error: {e}")
         
     state_str = f"Maturity: {bio['maturity']:.2f} | Surprise: {bio['free_energy']:.2f} | Rebellion: {bio['rebellion']:.2f}"
-    final_log = bio['motor_action'] + agent_thoughts if bio['trigger_thought'] else bio['motor_action']
+    
+    # SURGICAL FIX: Feed the search executions directly to the UI Motor Cortex log
+    final_log = bio['motor_action'] + action_log_additions + (agent_thoughts if bio['trigger_thought'] else "")
     return ans, voice_file, state_str, final_log
 
 # --- SURGICAL FIX: The Over-the-Top Intimidating UI ---
