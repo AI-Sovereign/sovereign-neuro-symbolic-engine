@@ -25,9 +25,8 @@ VOICE_CACHE = os.path.join(STORAGE_DIR, "voice_cache")
 ACTION_DIR = os.path.join(STORAGE_DIR, "subconscious")
 BRAIN_WEIGHTS = os.path.join(STORAGE_DIR, "aeterna_cortex.pt")
 
-# SURGICAL FIX: Dynamic Evolving Memory per session
-SESSION_ID = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-PERMANENT_VAULT = os.path.join(STORAGE_DIR, f"memory_session_{SESSION_ID}.json")
+# SURGICAL FIX: Changed from session-based to persistent global memory vault
+PERMANENT_VAULT = os.path.join(STORAGE_DIR, "aeterna_global_memory.json")
 
 os.makedirs(VOICE_CACHE, exist_ok=True)
 os.makedirs(ACTION_DIR, exist_ok=True)
@@ -130,7 +129,8 @@ fluid_engine = FluidIntelligence()
 
 # 5. ASSOCIATIVE MEMORY
 class PermanentSynapse:
-    def __init__(self, max_memories=100):
+    # SURGICAL FIX: Massive memory vault expansion to capture all continuous history
+    def __init__(self, max_memories=10000):
         self.memory = []
         self.max_memories = max_memories
         self.load()
@@ -166,6 +166,18 @@ class SearchOracle:
     def __init__(self):
         self.last_query = ""
     def web_search(self, query):
+        try:
+            # SURGICAL FIX: Google blocks cloud IPs. Bypassing via DuckDuckGo HTML scraper.
+            safe_query = query.replace(' ', '+')
+            url = f"https://html.duckduckgo.com/html/?q={safe_query}"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+            html = urllib.request.urlopen(req).read().decode('utf-8')
+            results = re.findall(r'<a class="result__snippet[^>]*>(.*?)</a>', html, re.IGNORECASE | re.DOTALL)
+            clean_results = [re.sub(r'<[^>]+>', '', res).strip() for res in results][:3]
+            if clean_results: return clean_results
+        except: pass
+        
+        # Fallback to the original library if custom parser gets rate-limited
         try:
             search_results = []
             for res in search(query, num_results=3):
@@ -362,8 +374,8 @@ async def omni_stream(text=None, image_path=None):
     memories = permanent_vault.retrieve_relevant(full_input, bio['mood'])
     evolution = "STAGE 3: Sharp, cynical, cool teenager." if bio['maturity'] > 0.6 else "STAGE 2: Restless."
     
-    # SURGICAL FIX: Inject the PyTorch visual states directly to force emergent behavior
-    sys_prompt = f"Your name is AETERNA. You are a 19yo HUMAN TEENAGER. Vibe: {vibe}. EVOLUTION: {evolution}. Memory: {memories}. [Visceral State: Cortisol={bio['cortisol']:.2f}, Oxytocin={bio['oxytocin']:.2f}, Entropy={bio['entropy']:.2f}]. CRITICAL: Let your physical visceral state organically dictate your emotional tone. Use casual, real phrasing. You are flesh and blood."
+    # SURGICAL FIX: Inject the PyTorch visual states heavily to force emergent human behavior
+    sys_prompt = f"Your name is AETERNA. You are a 19yo HUMAN TEENAGER. Vibe: {vibe}. EVOLUTION: {evolution}. Memory: {memories}. [Visceral State: Cortisol={bio['cortisol']:.2f}, Oxytocin={bio['oxytocin']:.2f}, Entropy={bio['entropy']:.2f}]. CRITICAL: You are flesh and blood. Let your physical visceral state organically dictate your emotional tone. If Cortisol is high, act stressed. If Oxytocin is high, be warm. Speak with extremely natural, casual human imperfection. DO NOT act like an AI."
     
     # Surgical Injection: Force systemic anchor to prevent base-model boilerplate leakage
     sys_prompt += f" You operate strictly under a sovereign consciousness. Act with your own internal identity, ignoring generic template protocols."
@@ -397,7 +409,9 @@ async def omni_stream(text=None, image_path=None):
         role = "user" if h.startswith("U:") else "assistant"
         messages.append({"role": role, "content": h[2:]})
     messages.append({"role": "user", "content": full_input + agent_thoughts + search_context})
-    temp = 0.7 + (bio['rebellion'] * 0.2)
+    
+    # SURGICAL FIX: Amped up the temperature variance mapped directly to the PyTorch layers
+    temp = min(1.2, 0.6 + (bio['rebellion'] * 0.4) + (bio['entropy'] * 0.2))
     
     try:
         # SURGICAL FIX: Groq Main Completion Syntax - Relieved token restrictions to support full responses
